@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Optimized Web App — Task 5</title>
+
+<!-- Performance hints -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="/fonts/inter-regular.woff2" as="font" type="font/woff2" crossorigin>
+
+<!-- Critical CSS inline (minified) -->
+<style>
+/* critical styles (minified) */
+:root{--bg:#f7f7f9;--accent:#0b74de;--max:1100px}
+*{box-sizing:border-box}html,body{height:100%}body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;margin:0;background:var(--bg);color:#111}
+.container{max-width:var(--max);margin:0 auto;padding:1rem}
+.header{display:flex;align-items:center;gap:1rem;padding:.6rem 0}
+.brand{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:inherit}
+nav{margin-left:auto}
+.nav a{margin-left:1rem;text-decoration:none;color:inherit;font-weight:600}
+.hero{display:grid;grid-template-columns:1fr;gap:1rem;padding:1.5rem 0;align-items:center}
+.card{background:#fff;border-radius:12px;padding:1rem;box-shadow:0 6px 18px rgba(10,10,10,.06)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.btn{display:inline-block;padding:.6rem .9rem;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none}
+.small{font-size:.9rem;color:#555}
+.footer{padding:1rem 0;text-align:center;font-size:.85rem;color:#666}
+
+/* responsive tweak */
+@media(min-width:720px){.hero{grid-template-columns:1fr 460px}}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true"><!-- inline SVG sprite reduces requests -->
+  <symbol id="logo" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1118 0 9 9 0 01-18 0zm9-4l4 6H8l4-6z"/></symbol>
+  <symbol id="icon-search" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35"/><circle cx="10.5" cy="10.5" r="6.5"/></symbol>
+</svg>
+
+<header class="container header">
+  <a class="brand" href="#"><svg width="28" height="28" aria-hidden="true"><use href="#logo"></use></svg><strong>MyApp</strong></a>
+  <nav class="nav" aria-label="Main navigation">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <!-- responsive hero image using srcset + lazy loading -->
+    <div class="card">
+      <h1>Fast, responsive web app</h1>
+      <p class="small">Optimized for performance: minimized assets, lazy loading, and fewer requests.</p>
+      <p><a class="btn" href="#features">Explore</a></p>
+    </div>
+
+    <div style="position:relative" class="card" data-bg="/images/hero-lg.jpg">
+      <!-- Use <picture> with srcset for different resolutions -->
+      <picture>
+        <source media="(min-width:800px)" srcset="/images/hero-lg-1200.jpg 1200w, /images/hero-lg-1600.jpg 1600w">
+        <source media="(min-width:400px)" srcset="/images/hero-md-800.jpg 800w, /images/hero-md-1000.jpg 1000w">
+        <img
+          src="/images/hero-sm-400.jpg"
+          alt="Demo hero"
+          width="100%"
+          height="auto"
+          loading="lazy"   <!-- native lazy loading -->
+          style="width:100%;display:block;border-radius:8px"
+        />
+      </picture>
+    </div>
+  </section>
+
+  <section id="features" class="grid" aria-label="Features">
+    <!-- small cards; icons are inline (no extra requests) -->
+    <article class="card">
+      <h3><svg width="18" height="18"><use href="#icon-search"></use></svg> Fast</h3>
+      <p class="small">Minified assets and caching for quick loads.</p>
+    </article>
+    <article class="card">
+      <h3>Responsive</h3>
+      <p class="small">Layout adapts to devices using CSS grid and srcset images.</p>
+    </article>
+    <article class="card">
+      <h3>Lazy</h3>
+      <p class="small">Images and below-the-fold content load only when needed.</p>
+    </article>
+  </section>
+</main>
+
+<footer class="container footer">
+  <small>© <span id="year"></span> MyApp — Built for speed</small>
+</footer>
+
+<!-- Tiny non-blocking script: deferred and minified (keeps main thread short) -->
+<script>
+/* defer-like behavior: executes after parsing (script at end of body) */
+/* 1) update year, 2) register simple bg-image lazyloader, 3) load optional non-critical script */
+document.getElementById('year').textContent=new Date().getFullYear();
+
+/* Lazy-load background images using IntersectionObserver with a safe fallback */
+(function(){
+  const els=document.querySelectorAll('[data-bg]');
+  if(!els.length) return;
+  const load=(el)=>{ el.style.backgroundImage=`url(${el.dataset.bg})`; el.removeAttribute('data-bg'); };
+  if('IntersectionObserver' in window){
+    const obs=new IntersectionObserver((it)=>{
+      it.forEach(i=>{
+        if(i.isIntersecting){ load(i.target); obs.unobserve(i.target); }
+      });
+    },{rootMargin:'200px'});
+    els.forEach(e=>obs.observe(e));
+  } else { els.forEach(load); } // fallback: eager load
+})();
+
+/* Non-critical JS loaded async via dynamic import pattern (keeps initial payload small) */
+setTimeout(()=>{ const s=document.createElement('script'); s.src='/js/app.lazy.js'; s.async=true; document.body.appendChild(s); },1200);
+</script>
+
+<!-- Best practices notes:
+ - Serve compressed assets (gzip/Brotli) from server.
+ - Cache static assets with long max-age + fingerprinting (e.g., app.abc123.js).
+ - Combine/minify CSS & JS in build step (tooling: webpack/rollup/vite).
+ - Use HTTP/2 or HTTP/3 to reduce request overhead.
+ - Provide critical CSS inline (done above) and load rest CSS asynchronously if large.
+ - Use font-display:swap in your @font-face declarations.
+-->
+
+</body>
+</html>
